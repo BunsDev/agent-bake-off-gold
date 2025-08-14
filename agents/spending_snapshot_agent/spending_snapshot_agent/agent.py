@@ -21,7 +21,7 @@ class SpendingSummary(BaseModel):
 retriever_agent = LlmAgent(
     model="gemini-2.5-flash",
     name="spending_retriever",
-    description="An agent that retrieves user transaction data and profile information",
+    description="An agent that retrieves user transaction data and profile information for the requested period. ",
     instruction="""
     You are a helpful financial assistant. Your goal is to gather comprehensive spending and profile data.
     
