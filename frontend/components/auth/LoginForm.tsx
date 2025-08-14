@@ -52,8 +52,8 @@ export function LoginForm() {
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Username"
                 className={`h-12 text-base transition-all duration-200 bg-background/50 border-border/50 focus:bg-background focus:border-primary ${
-                  error 
-                    ? "border-destructive focus:border-destructive ring-destructive/20" 
+                  error
+                    ? "border-destructive focus:border-destructive ring-destructive/20"
                     : "focus:ring-primary/20"
                 }`}
                 disabled={isLoading}
@@ -87,7 +87,9 @@ export function LoginForm() {
           <div className="mt-8 text-center space-y-3">
             <div className="flex items-center gap-2 justify-center">
               <div className="h-px bg-border flex-1"></div>
-              <span className="text-xs text-muted-foreground bg-card px-2">Demo Accounts</span>
+              <span className="text-xs text-muted-foreground bg-card px-2">
+                Demo Accounts
+              </span>
               <div className="h-px bg-border flex-1"></div>
             </div>
             <div className="flex gap-2 justify-center">
