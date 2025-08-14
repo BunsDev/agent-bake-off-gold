@@ -19,7 +19,7 @@ class SpendingSummary(BaseModel):
 
 
 retriever_agent = LlmAgent(
-    model="gemini-2.5-pro",
+    model="gemini-2.5-flash",
     name="spending_retriever",
     description="An agent that retrieves user transaction data and profile information",
     instruction="""
@@ -38,7 +38,7 @@ retriever_agent = LlmAgent(
 )
 
 formatting_agent = LlmAgent(
-    model="gemini-2.5-pro",
+    model="gemini-2.5-flash",
     name="spending_formatter",
     description="Analyzes spending data and generates structured financial insights",
     instruction="""

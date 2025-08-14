@@ -10,19 +10,23 @@ interface SpendingCardProps {
 
 export function SpendingCard({ title, amount, variant }: SpendingCardProps) {
   const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat('en-US', { 
-      style: 'currency', 
-      currency: 'USD',
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      maximumFractionDigits: 2,
     }).format(value);
   };
 
   const getIcon = () => {
     if (variant === "success") {
-      return <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />;
+      return (
+        <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
+      );
     } else if (variant === "destructive") {
-      return <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />;
+      return (
+        <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+      );
     }
     return <DollarSign className="h-5 w-5 text-gray-600 dark:text-gray-400" />;
   };
@@ -50,20 +54,22 @@ export function SpendingCard({ title, amount, variant }: SpendingCardProps) {
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-sm font-medium text-muted-foreground">
-              {title}
-            </p>
-            <p className={cn(
-              "text-2xl font-bold tracking-tight",
-              getAmountColor()
-            )}>
+            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            <p
+              className={cn(
+                "text-2xl font-bold tracking-tight",
+                getAmountColor()
+              )}
+            >
               {formatCurrency(amount)}
             </p>
           </div>
-          <div className={cn(
-            "p-3 rounded-full transition-colors",
-            getIconBackground()
-          )}>
+          <div
+            className={cn(
+              "p-3 rounded-full transition-colors",
+              getIconBackground()
+            )}
+          >
             {getIcon()}
           </div>
         </div>

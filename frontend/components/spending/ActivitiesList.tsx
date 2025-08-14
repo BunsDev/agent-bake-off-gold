@@ -8,9 +8,10 @@ interface ActivitiesListProps {
 
 export function ActivitiesList({ activities }: ActivitiesListProps) {
   // Convert activities array to markdown bullet list
-  const markdownList = activities.length > 0 
-    ? activities.map(activity => `- ${activity}`).join('\n')
-    : '';
+  const markdownList =
+    activities.length > 0
+      ? activities.map((activity) => `- ${activity}`).join("\n")
+      : "";
 
   return (
     <Card>
@@ -35,7 +36,7 @@ export function ActivitiesList({ activities }: ActivitiesListProps) {
                     <span className="text-primary mt-1.5 text-xs">•</span>
                     <span className="flex-1">{children}</span>
                   </li>
-                )
+                ),
               }}
             >
               {markdownList}

@@ -31,9 +31,7 @@ export function InsightsCard({ insights }: InsightsCardProps) {
                   </strong>
                 ),
                 em: ({ children }) => (
-                  <em className="italic text-foreground/90">
-                    {children}
-                  </em>
+                  <em className="italic text-foreground/90">{children}</em>
                 ),
                 ul: ({ children }) => (
                   <ul className="space-y-1 text-sm text-muted-foreground ml-4">
@@ -50,7 +48,7 @@ export function InsightsCard({ insights }: InsightsCardProps) {
                   <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono">
                     {children}
                   </code>
-                )
+                ),
               }}
             >
               {insights}

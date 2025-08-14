@@ -27,7 +27,7 @@ export default function SpendingPage() {
               Welcome back, {user?.username}!
             </p>
           </div>
-          <SpendingSnapshot userId={user?.username || ''} />
+          <SpendingSnapshot userId={user?.username || ""} />
         </div>
       }
       rightPanel={

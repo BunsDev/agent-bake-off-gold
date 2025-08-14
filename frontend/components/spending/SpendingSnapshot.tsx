@@ -23,23 +23,52 @@ export function SpendingSnapshot({ userId }: SpendingSnapshotProps) {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch('/api/cymbal/spending-snapshot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId })
+      console.log("[FRONTEND] 🚀 Fetching spending data for userId:", userId);
+
+      const response = await fetch("/api/cymbal/spending-snapshot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
       });
 
+      console.log("[FRONTEND] 📡 API response status:", response.status);
+      console.log(
+        "[FRONTEND] 📡 API response headers:",
+        Object.fromEntries(response.headers.entries())
+      );
+
       if (!response.ok) {
+        console.log(
+          "[FRONTEND] ❌ API request failed with status:",
+          response.status
+        );
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Request failed: ${response.status}`);
+        console.log("[FRONTEND] ❌ Error response data:", errorData);
+        throw new Error(
+          errorData.message || `Request failed: ${response.status}`
+        );
       }
 
       const result = await response.json();
+      console.log("[FRONTEND] ✅ API response received:");
+      console.log("[FRONTEND] ✅ Response data type:", typeof result);
+      console.log(
+        "[FRONTEND] ✅ Response data keys:",
+        result ? Object.keys(result) : "no keys"
+      );
+      console.log(
+        "[FRONTEND] ✅ Full response data:",
+        JSON.stringify(result, null, 2)
+      );
+
       setData(result);
+      console.log("[FRONTEND] ✅ Data set in component state");
+      console.log("[FRONTEND] ✅ Component will re-render with new data");
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      const errorMessage =
+        err instanceof Error ? err.message : "Unknown error occurred";
       setError(`Failed to load spending data: ${errorMessage}`);
-      console.error('Spending data fetch error:', err);
+      console.error("[FRONTEND] ❌ Spending data fetch error:", err);
     } finally {
       setIsLoading(false);
     }
@@ -71,9 +100,9 @@ export function SpendingSnapshot({ userId }: SpendingSnapshotProps) {
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">
             <span>{error}</span>
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={fetchSpendingData}
               className="ml-4"
             >
@@ -86,18 +115,29 @@ export function SpendingSnapshot({ userId }: SpendingSnapshotProps) {
   }
 
   // Success state - render the dashboard
+  console.log("[FRONTEND] 🎨 Rendering dashboard with data:");
+  console.log("[FRONTEND] 🎨 Income:", data?.income);
+  console.log("[FRONTEND] 🎨 Expenses:", data?.expenses);
+  console.log("[FRONTEND] 🎨 Activities count:", data?.activities?.length);
+  console.log("[FRONTEND] 🎨 Activities:", data?.activities);
+  console.log("[FRONTEND] 🎨 Insights length:", data?.insights?.length);
+  console.log(
+    "[FRONTEND] 🎨 Insights preview:",
+    data?.insights?.substring(0, 100)
+  );
+
   return (
     <div className="flex-1 p-6 space-y-4 overflow-y-auto">
       {/* Income and Expenses Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <SpendingCard 
-          title="Income" 
-          amount={data?.income || 0} 
+        <SpendingCard
+          title="Income"
+          amount={data?.income || 0}
           variant="success"
         />
-        <SpendingCard 
-          title="Expenses" 
-          amount={data?.expenses || 0} 
+        <SpendingCard
+          title="Expenses"
+          amount={data?.expenses || 0}
           variant="destructive"
         />
       </div>
@@ -106,7 +146,7 @@ export function SpendingSnapshot({ userId }: SpendingSnapshotProps) {
       <ActivitiesList activities={data?.activities || []} />
 
       {/* Financial Insights */}
-      <InsightsCard insights={data?.insights || ''} />
+      <InsightsCard insights={data?.insights || ""} />
     </div>
   );
 }
