@@ -222,20 +222,6 @@ export function PortfolioSnapshot({
               />
             </div>
 
-            {/* Cashflow Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 transform hover:scale-[1.01] transition-transform duration-300">
-              <PortfolioCard
-                title="Cashflow"
-                items={data?.cashflow || []}
-                variant="default"
-              />
-              <PortfolioCard
-                title="Average Cashflow"
-                items={data?.average_cashflow || []}
-                variant="default"
-              />
-            </div>
-
             {/* Financial Insights */}
             <div className="transform hover:scale-[1.01] transition-transform duration-300">
               <InsightsCard insights={data?.insights || ""} />

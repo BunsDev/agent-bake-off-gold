@@ -250,11 +250,13 @@ ${JSON.stringify(contextData, null, 2)}
                 </div>
 
                 <h3 className="text-2xl font-bold bg-gradient-to-r from-foreground via-foreground/90 to-foreground/70 bg-clip-text text-transparent mb-3">
-                  Let&rsquo;s talk about your portfolio
+                  {/* eslint-disable-next-line react/no-unescaped-entities */}
+                  Let's talk about your portfolio
                 </h3>
                 <p className="text-muted-foreground mb-8 leading-relaxed">
-                  I&rsquo;m here to help you understand your investments, track
-                  your debts, and optimize your financial portfolio.
+                  {/* eslint-disable-next-line react/no-unescaped-entities */}
+                  I'm here to help you understand your investments, track your
+                  debts, and optimize your financial portfolio.
                 </p>
 
                 {/* Quick Start Suggestions */}
@@ -264,7 +266,7 @@ ${JSON.stringify(contextData, null, 2)}
                   </p>
                   <div className="grid gap-2">
                     {[
-                      "💰 What&rsquo;s my current net worth?",
+                      "💰 What's my current net worth?",
                       "📈 How are my investments performing?",
                       "💳 What debts should I prioritize?",
                       "💡 How can I improve my cashflow?",
