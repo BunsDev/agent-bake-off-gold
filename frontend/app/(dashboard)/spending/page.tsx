@@ -1,15 +1,36 @@
 "use client";
 
+import { useState } from "react";
 import { SplitView } from "../../../components/layout/SplitView";
 import { useAuth } from "@/components/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import { SpendingSnapshot } from "@/components/spending/SpendingSnapshot";
+import { SpendingChat } from "@/components/spending/SpendingChat";
+import { SpendingSnapshotData } from "@/lib/types/spending";
 
 export default function SpendingPage() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
-  // Redirect to login if not authenticated
+  // Shared state for snapshot and chat coordination
+  const [snapshotLoaded, setSnapshotLoaded] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_snapshotData, setSnapshotData] =
+    useState<SpendingSnapshotData | null>(null);
+
+  // Show loading state while authentication is being restored
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated (only after loading is complete)
   if (!isAuthenticated) {
     router.push("/");
     return null;
@@ -27,7 +48,18 @@ export default function SpendingPage() {
               Welcome back, {user?.username}!
             </p>
           </div>
-          <SpendingSnapshot userId={user?.username || ""} />
+          <SpendingSnapshot
+            userId={user?.username || ""}
+            onDataLoaded={(data) => {
+              setSnapshotData(data);
+              setSnapshotLoaded(true);
+            }}
+            onLoadingStateChange={(loading) => {
+              if (!loading) {
+                // Additional logic can go here if needed
+              }
+            }}
+          />
         </div>
       }
       rightPanel={
@@ -40,13 +72,10 @@ export default function SpendingPage() {
               Ask questions about your spending patterns
             </p>
           </div>
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <p className="text-muted-foreground">
-                Chat interface will go here
-              </p>
-            </div>
-          </div>
+          <SpendingChat
+            userId={user?.username || ""}
+            isEnabled={snapshotLoaded}
+          />
         </div>
       }
     />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { SpendingSnapshotData } from "@/lib/types/spending";
 import { SpendingCard } from "./SpendingCard";
 import { ActivitiesList } from "./ActivitiesList";
@@ -11,16 +11,23 @@ import { Button } from "@/components/ui/button";
 
 interface SpendingSnapshotProps {
   userId: string;
+  onDataLoaded?: (data: SpendingSnapshotData) => void;
+  onLoadingStateChange?: (isLoading: boolean) => void;
 }
 
-export function SpendingSnapshot({ userId }: SpendingSnapshotProps) {
+export function SpendingSnapshot({
+  userId,
+  onDataLoaded,
+  onLoadingStateChange,
+}: SpendingSnapshotProps) {
   const [data, setData] = useState<SpendingSnapshotData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSpendingData = async () => {
+  const fetchSpendingData = useCallback(async () => {
     try {
       setIsLoading(true);
+      onLoadingStateChange?.(true);
       setError(null);
 
       console.log("[FRONTEND] 🚀 Fetching spending data for userId:", userId);
@@ -62,6 +69,7 @@ export function SpendingSnapshot({ userId }: SpendingSnapshotProps) {
       );
 
       setData(result);
+      onDataLoaded?.(result);
       console.log("[FRONTEND] ✅ Data set in component state");
       console.log("[FRONTEND] ✅ Component will re-render with new data");
     } catch (err) {
@@ -71,14 +79,15 @@ export function SpendingSnapshot({ userId }: SpendingSnapshotProps) {
       console.error("[FRONTEND] ❌ Spending data fetch error:", err);
     } finally {
       setIsLoading(false);
+      onLoadingStateChange?.(false);
     }
-  };
+  }, [userId, onLoadingStateChange, onDataLoaded]);
 
   useEffect(() => {
     if (userId) {
       fetchSpendingData();
     }
-  }, [userId]);
+  }, [userId, fetchSpendingData]);
 
   // Loading state
   if (isLoading) {
