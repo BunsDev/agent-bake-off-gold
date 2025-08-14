@@ -1,46 +1,72 @@
+from typing import List
+
 from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.tools.agent_tool import AgentTool
+from pydantic import BaseModel, Field
 
 from .cymbal_agent_wrapper import bank_agent_wrapper
+
+
+class SpendingSummary(BaseModel):
+    """Structured output for spending analysis"""
+
+    activities: List[str] = Field(description="List of 5 most recent transactions")
+    income: float = Field(description="Total income amount from transactions")
+    expenses: float = Field(description="Total expenses amount from transactions")
+    insights: str = Field(
+        description="Financial insights based on user goals and spending patterns"
+    )
+
 
 retriever_agent = LlmAgent(
     model="gemini-2.5-pro",
     name="spending_retriever",
-    description="Research is everything regarding the users current spending",
+    description="An agent that retrieves user transaction data and profile information",
     instruction="""
-    You are an expert report architect. Using the research topic and the plan from the 'research_plan' state key, design a logical structure for the final report.
-    Note: Ignore all the tag nanes ([MODIFIED], [NEW], [RESEARCH], [DELIVERABLE]) in the research plan.
-    Your task is to create a markdown outline with 4-6 distinct sections that cover the topic comprehensively without overlap.
-    You can use any markdown format you prefer, but here's a suggested structure:
-    # Section Name
-    A brief overview of what this section covers
-    Feel free to add subsections or bullet points if needed to better organize the content.
-    Make sure your outline is clear and easy to follow.
-    Do not include a "References" or "Sources" section in your outline. Citations will be handled in-line.
+    You are a helpful financial assistant. Your goal is to gather comprehensive spending and profile data.
+    
+    **Phase 1: Get Transaction Data**
+    Call the cymbal_agent tool with the query "List my recent transactions." to get the user's transaction history.
+    
+    **Phase 2: Get User Profile**
+    Call the cymbal_agent tool with the query "Get my user profile" to get the user's profile information including their financial goals.
+    
+    Combine both the transaction data and user profile information in your response for the next agent to use.
     """,
+    tools=[AgentTool(bank_agent_wrapper)],
     output_key="spending_data",
 )
 
-chart_agent = LlmAgent(
-    model="gemini-2.5-flash",
-    name="spending_chart_agent",
-    description="Create a chart of the users spending",
+formatting_agent = LlmAgent(
+    model="gemini-2.5-pro",
+    name="spending_formatter",
+    description="Analyzes spending data and generates structured financial insights",
     instruction="""
-    
+    You are an expert financial analyst. Using the spending data and user profile from the 'spending_data' state key, 
+    analyze the information and provide structured insights.
 
-    You are an expert chart architect. Using the spending data from the 'spending_data' state key, create a chart of the users spending.
+    **Your Task:**
+    1. **Activities**: List the 5 most recent transactions (format: "Date - Merchant - Amount")
+    2. **Income**: Calculate total income from transactions (look for payrolls, salary deposits, refunds, etc.)
+    3. **Expenses**: Calculate total expenses from transactions (purchases, bills, rent, groceries, etc.)
+    4. **Insights**: Analyze spending patterns against the user's goals from their profile. Provide actionable insights about their financial behavior, potential savings opportunities, or goal alignment.
+
+    **CRITICAL CONSTRAINTS:**
+    - You must return a structured JSON response that matches the SpendingSummary schema exactly
+    - Base income/expense calculations on transaction types and amounts 
+    - Make insights specific and actionable based on the user's stated goals
     """,
-    tools=[AgentTool(bank_agent_wrapper)],
-    output_key="spending_chart",
+    output_schema=SpendingSummary,
+    output_key="spending_summary",
 )
 
 
 spending_snapshot_workflow = SequentialAgent(
-    name="research_pipeline",
-    description="Executes a pre-approved research plan. It performs iterative research, evaluation, and composes a final, cited report.",
+    name="spending_snapshot_pipeline",
+    description="Executes a pre-decided pipeline. It retrieves transaction data and user profile, then generates structured financial insights.",
     sub_agents=[
         retriever_agent,
-        chart_agent,
+        formatting_agent,
     ],
 )
 
