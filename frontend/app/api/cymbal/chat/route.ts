@@ -24,10 +24,16 @@ export async function POST(request: NextRequest): Promise<Response> {
   console.log("[ADK CHAT] 🚀 Starting chat request...");
 
   try {
-    const { userId, message, sessionId } = await request.json();
+    const {
+      userId,
+      message,
+      sessionId,
+      topic = "spending",
+    } = await request.json();
     console.log("[ADK CHAT] 📋 Request data:", {
       userId,
       message,
+      topic,
       hasSessionId: !!sessionId,
     });
 
@@ -41,43 +47,21 @@ export async function POST(request: NextRequest): Promise<Response> {
 
     let currentSessionId = sessionId;
 
-    // If no session provided, create new session with initial state
+    // If no session provided, create new session (simple - no context fetching)
     if (!currentSessionId) {
-      console.log(
-        "[ADK CHAT] 🆕 Creating new ADK session with spending context..."
-      );
+      console.log("[ADK CHAT] 🆕 Creating new ADK chat session...");
 
       try {
-        // Try to get current spending snapshot for context
-        const snapshotResponse = await fetch(
-          `http://localhost:3000/api/cymbal/spending-snapshot`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId }),
-          }
-        );
-
-        let contextData = null;
-        if (snapshotResponse.ok) {
-          contextData = await snapshotResponse.json();
-          console.log("[ADK CHAT] 📊 Snapshot context retrieved for session");
-        } else {
-          console.log(
-            "[ADK CHAT] ⚠️ Could not retrieve snapshot context, proceeding without"
-          );
-        }
-
-        // Create session with initial state containing topic and context
+        // Create session with simple initial state (context comes from frontend message)
         const sessionState = {
-          topic: "spending",
-          ...(contextData && { contextData }),
+          topic: topic,
+          user_id: userId,
         };
 
         console.log("[ADK CHAT] 📡 Creating session with state:", sessionState);
 
         const sessionResponse = await fetch(
-          `http://localhost:8081/apps/spending_snapshot_agent/users/${userId}/sessions`,
+          `http://localhost:8090/apps/chat/users/${userId}/sessions`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -103,41 +87,23 @@ export async function POST(request: NextRequest): Promise<Response> {
         });
       } catch (sessionError) {
         console.error("[ADK CHAT] ❌ Session creation failed:", sessionError);
-        // Continue without context if session creation fails
-        const fallbackResponse = await fetch(
-          `http://localhost:8081/apps/spending_snapshot_agent/users/${userId}/sessions`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ state: { topic: "spending" } }),
-          }
-        );
-
-        if (!fallbackResponse.ok) {
-          throw new Error("Failed to create fallback ADK session");
-        }
-
-        const fallbackSession: ADKSessionResponse =
-          await fallbackResponse.json();
-        currentSessionId = fallbackSession.id;
-        console.log(
-          "[ADK CHAT] ⚠️ Created fallback session without context:",
-          currentSessionId
-        );
+        throw new Error("Failed to create chat session");
       }
+    } else {
+      console.log("[ADK CHAT] 🔄 Using existing session:", currentSessionId);
     }
 
-    // Send message to ADK agent with SSE streaming
+    // Send message to ADK agent (simple JSON request)
     console.log("[ADK CHAT] 🤖 Sending message to ADK agent...");
     const agentRequest: ADKAgentRequest = {
-      app_name: "spending_snapshot_agent",
+      app_name: "chat",
       user_id: userId,
       session_id: currentSessionId,
       new_message: {
         role: "user",
         parts: [{ text: message }],
       },
-      streaming: true, // Enable SSE streaming
+      streaming: false, // Use simple JSON response instead of streaming
     };
 
     console.log("[ADK CHAT] 📡 Agent request details:", {
@@ -148,119 +114,102 @@ export async function POST(request: NextRequest): Promise<Response> {
       streaming: agentRequest.streaming,
     });
 
-    const agentResponse = await fetch(`http://localhost:8081/run_sse`, {
+    const agentResponse = await fetch(`http://localhost:8090/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(agentRequest),
     });
 
+    console.log("[ADK CHAT] ✅ ADK agent response received");
+    console.log("[ADK CHAT] 📥 Agent response:", agentResponse);
+
     if (!agentResponse.ok) {
-      throw new Error(`ADK agent SSE request failed: ${agentResponse.status}`);
+      throw new Error(`ADK agent request failed: ${agentResponse.status}`);
     }
 
-    console.log("[ADK CHAT] ✅ ADK agent SSE stream initiated");
+    const agentData = await agentResponse.json();
 
-    // Create SSE response stream for client
-    const stream = new ReadableStream({
-      start(controller) {
-        console.log("[ADK CHAT] 🌊 Starting SSE stream to client...");
-
-        // Send session ID to client first
-        const sessionData = `data: ${JSON.stringify({
-          type: "session",
-          sessionId: currentSessionId,
-        })}\n\n`;
-        controller.enqueue(new TextEncoder().encode(sessionData));
-
-        // Process ADK agent SSE stream
-        const reader = agentResponse.body?.getReader();
-        if (!reader) {
-          controller.close();
-          return;
-        }
-
-        const processStream = async () => {
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-
-              if (done) {
-                console.log("[ADK CHAT] ✅ ADK stream completed");
-                controller.close();
-                break;
-              }
-
-              const chunk = new TextDecoder().decode(value);
-              console.log(
-                "[ADK CHAT] 📦 Received chunk from ADK:",
-                chunk.substring(0, 100)
-              );
-
-              // Parse ADK SSE events and extract content
-              const lines = chunk.split("\n");
-              for (const line of lines) {
-                if (line.startsWith("data: ")) {
-                  try {
-                    const eventData = JSON.parse(line.slice(6));
-                    console.log("[ADK CHAT] 🔍 Parsing ADK event:", {
-                      hasContent: !!eventData.content,
-                      hasActions: !!eventData.actions,
-                      contentParts: eventData.content?.parts?.length || 0,
-                    });
-
-                    // Extract text content from ADK event
-                    if (eventData.content?.parts) {
-                      for (const part of eventData.content.parts) {
-                        if (part.text) {
-                          console.log(
-                            "[ADK CHAT] 💬 Forwarding text content:",
-                            part.text.substring(0, 50)
-                          );
-
-                          // Forward as SSE to client
-                          const clientData = `data: ${JSON.stringify({
-                            type: "content",
-                            text: part.text,
-                            timestamp: Date.now(),
-                          })}\n\n`;
-
-                          controller.enqueue(
-                            new TextEncoder().encode(clientData)
-                          );
-                        }
-                      }
-                    }
-                  } catch {
-                    console.log(
-                      "[ADK CHAT] ⚠️ Could not parse ADK event data:",
-                      line.substring(0, 100)
-                    );
-                  }
-                }
-              }
-            }
-          } catch (streamError) {
-            console.error(
-              "[ADK CHAT] ❌ Stream processing error:",
-              streamError
-            );
-            controller.error(streamError);
-          }
-        };
-
-        processStream();
-      },
+    // Debug: ADK returns an array of events, not a single object
+    console.log("[ADK CHAT] 📥 Response is array:", Array.isArray(agentData));
+    console.log(
+      "[ADK CHAT] 📥 Response length:",
+      Array.isArray(agentData) ? agentData.length : "N/A"
+    );
+    console.log("[ADK CHAT] 📥 Agent response structure:", {
+      isArray: Array.isArray(agentData),
+      length: Array.isArray(agentData) ? agentData.length : 0,
+      hasContent: !!agentData.content, // Will be false if it's an array
+      firstItemKeys:
+        Array.isArray(agentData) && agentData.length > 0
+          ? Object.keys(agentData[0])
+          : [],
     });
 
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
+    // Extract text content from the response - ADK returns array of events
+    let responseText = "";
+
+    if (Array.isArray(agentData)) {
+      // ADK returns array of events - find the final response with text
+      console.log(
+        "[ADK CHAT] 🔍 Processing array of",
+        agentData.length,
+        "events"
+      );
+
+      // Iterate through all events and collect text responses (usually the last one is the final answer)
+      for (let i = 0; i < agentData.length; i++) {
+        const event = agentData[i];
+        if (event.content?.parts) {
+          for (const part of event.content.parts) {
+            if (part.text) {
+              responseText += part.text; // Accumulate all text responses
+              console.log(
+                "[ADK CHAT] 📝 Found text in event",
+                i,
+                ":",
+                part.text.substring(0, 50) + "..."
+              );
+            }
+          }
+        }
+      }
+    } else {
+      // Fallback: Handle single object response (legacy format)
+      if (agentData.content?.parts) {
+        for (const part of agentData.content.parts) {
+          if (part.text) {
+            responseText += part.text;
+          }
+        }
+      }
+
+      // Try other common fields
+      if (!responseText && agentData.text) {
+        responseText = agentData.text;
+      }
+      if (!responseText && agentData.message) {
+        responseText = agentData.message;
+      }
+      if (!responseText && agentData.response) {
+        responseText = agentData.response;
+      }
+    }
+
+    if (!responseText) {
+      console.error("[ADK CHAT] ❌ Could not find text in any expected field");
+      throw new Error("No text content received from agent");
+    }
+
+    console.log(
+      "[ADK CHAT] 💬 Found response text:",
+      responseText.substring(0, 100) + "..."
+    );
+
+    // Return simple JSON response (always include session_id for frontend state management)
+    return Response.json({
+      response: responseText,
+      session_id: currentSessionId, // Always return session_id for persistence
+      timestamp: Date.now(),
     });
   } catch (error) {
     console.error("[ADK CHAT] ❌ Chat request error:", error);

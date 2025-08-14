@@ -5,14 +5,16 @@ interface SplitViewProps {
 
 export function SplitView({ leftPanel, rightPanel }: SplitViewProps) {
   return (
-    <div className="flex h-full">
-      {/* Left Panel - Charts Area */}
-      <div className="flex-1 p-6 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+    <div className="flex h-screen">
+      {/* Left Panel - Dashboard Area */}
+      <div className="flex-1 border-r border-border/50 bg-gradient-to-b from-background to-muted/20 relative">
         {leftPanel}
       </div>
 
       {/* Right Panel - Chat Area */}
-      <div className="flex-1 p-6 bg-white dark:bg-gray-900">{rightPanel}</div>
+      <div className="flex-1 bg-gradient-to-b from-background to-muted/20 relative">
+        {rightPanel}
+      </div>
     </div>
   );
 }

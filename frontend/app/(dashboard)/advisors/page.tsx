@@ -4,30 +4,30 @@ import { useState, useCallback, useEffect } from "react";
 import { SplitView } from "../../../components/layout/SplitView";
 import { useAuth } from "@/components/auth/AuthContext";
 import { useRouter } from "next/navigation";
-import { SpendingSnapshot } from "@/components/spending/SpendingSnapshot";
-import { SpendingChat } from "@/components/spending/SpendingChat";
-import { SpendingSnapshotData } from "@/lib/types/spending";
-import { Brain, MessageSquare } from "lucide-react";
+import { AdvisorsSnapshot } from "@/components/advisors/AdvisorsSnapshot";
+import { AdvisorsChat } from "@/components/advisors/AdvisorsChat";
+import { AdvisorsSnapshotData } from "@/lib/types/advisors";
+import { UserCheck, MessageSquare } from "lucide-react";
 
-export default function SpendingPage() {
+export default function AdvisorsPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   // Shared state for snapshot and chat coordination
   const [snapshotLoaded, setSnapshotLoaded] = useState(false);
-  const [snapshotData, setSnapshotData] = useState<SpendingSnapshotData | null>(
-    null
-  );
+  const [_advisorsData, setAdvisorsData] =
+    useState<AdvisorsSnapshotData | null>(null);
 
-  // Memoize callback functions to prevent infinite re-renders
-  const handleDataLoaded = useCallback((data: SpendingSnapshotData) => {
-    setSnapshotData(data);
-    setSnapshotLoaded(true);
+  // Callbacks for coordinating between snapshot and chat (moved before conditional returns)
+  const handleSnapshotDataLoaded = useCallback((data: AdvisorsSnapshotData) => {
+    console.log("[ADVISORS PAGE] 📋 Snapshot data loaded:", data);
+    setAdvisorsData(data);
+    setSnapshotLoaded(true); // Enable chat
   }, []);
 
-  const handleLoadingStateChange = useCallback((loading: boolean) => {
-    if (!loading) {
-      // Additional logic can go here if needed
+  const handleSnapshotLoadingChange = useCallback((loading: boolean) => {
+    if (loading) {
+      setSnapshotLoaded(false); // Disable chat during reload
     }
   }, []);
 
@@ -63,6 +63,12 @@ export default function SpendingPage() {
     );
   }
 
+  console.log("[ADVISORS PAGE] 🎨 Rendering with state:", {
+    userId: user?.username,
+    snapshotLoaded,
+    hasAdvisorsData: !!_advisorsData,
+  });
+
   return (
     <SplitView
       leftPanel={
@@ -73,10 +79,10 @@ export default function SpendingPage() {
             <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-cyan-500/5 pointer-events-none" />
 
             <div className="relative flex items-center gap-4 mb-3">
-              {/* Mini FI Logo */}
+              {/* Advisors Icon */}
               <div className="relative">
                 <div className="w-10 h-10 bg-gradient-to-br from-primary to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
-                  <span className="text-white font-bold text-sm">FI</span>
+                  <UserCheck className="h-5 w-5 text-white" />
                 </div>
                 <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-cyan-400 rounded-full animate-pulse" />
               </div>
@@ -84,7 +90,7 @@ export default function SpendingPage() {
               {/* Header Text */}
               <div>
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
-                  Financial Intelligence Dashboard
+                  Advisors Intelligence Dashboard
                 </h2>
                 <p className="text-muted-foreground text-sm">
                   Welcome back, {user?.username}!
@@ -95,10 +101,10 @@ export default function SpendingPage() {
 
           {/* Scrollable Content */}
           <div className="flex-1 overflow-hidden">
-            <SpendingSnapshot
+            <AdvisorsSnapshot
               userId={user?.username || ""}
-              onDataLoaded={handleDataLoaded}
-              onLoadingStateChange={handleLoadingStateChange}
+              onDataLoaded={handleSnapshotDataLoaded}
+              onLoadingStateChange={handleSnapshotLoadingChange}
             />
           </div>
         </div>
@@ -114,20 +120,20 @@ export default function SpendingPage() {
               {/* AI Chat Icon */}
               <div className="relative">
                 <div className="w-10 h-10 bg-gradient-to-br from-primary to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
-                  <Brain className="h-5 w-5 text-white" />
+                  <MessageSquare className="h-5 w-5 text-white" />
                 </div>
                 <div className="absolute -bottom-0.5 -right-0.5">
-                  <MessageSquare className="h-4 w-4 text-cyan-400" />
+                  <UserCheck className="h-4 w-4 text-cyan-400" />
                 </div>
               </div>
 
               {/* Header Text */}
               <div>
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
-                  AI Financial Assistant
+                  AI Advisors Assistant
                 </h2>
                 <p className="text-muted-foreground text-sm">
-                  Ask questions about your spending patterns
+                  Ask questions about your advisors and meetings
                 </p>
               </div>
             </div>
@@ -135,10 +141,10 @@ export default function SpendingPage() {
 
           {/* Scrollable Chat Container */}
           <div className="flex-1 overflow-hidden">
-            <SpendingChat
+            <AdvisorsChat
               userId={user?.username || ""}
               isEnabled={snapshotLoaded}
-              spendingData={snapshotData}
+              advisorsData={_advisorsData}
             />
           </div>
         </div>

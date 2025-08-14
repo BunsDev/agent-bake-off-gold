@@ -2,25 +2,25 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { ChatMessage, ChatState } from "@/lib/types/chat";
-import { SpendingSnapshotData } from "@/lib/types/spending";
+import { PortfolioSnapshotData } from "@/lib/types/portfolio";
 
 import { Loader2, MessageSquare, AlertCircle, Brain } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { UserMessage } from "./UserMessage";
-import { AgentMessage } from "./AgentMessage";
-import { ChatInput } from "./ChatInput";
+import { UserMessage } from "../spending/UserMessage";
+import { AgentMessage } from "../spending/AgentMessage";
+import { ChatInput } from "../spending/ChatInput";
 
-interface SpendingChatProps {
+interface PortfolioChatProps {
   userId: string;
   isEnabled: boolean; // Chat appears after snapshot loads
-  spendingData: SpendingSnapshotData | null;
+  portfolioData: PortfolioSnapshotData | null;
 }
 
-export function SpendingChat({
+export function PortfolioChat({
   userId,
   isEnabled,
-  spendingData,
-}: SpendingChatProps) {
+  portfolioData,
+}: PortfolioChatProps) {
   const [chatState, setChatState] = useState<ChatState>({
     messages: [],
     isLoading: false,
@@ -50,25 +50,27 @@ export function SpendingChat({
       // Prepare message with context for first message only
       let messageToSend = message.trim();
 
-      // If this is the first message (no sessionId), include spending context
-      if (!chatState.sessionId && spendingData) {
-        console.log("[CHAT] 🎯 First message - adding spending context");
+      // If this is the first message (no sessionId), include portfolio context
+      if (!chatState.sessionId && portfolioData) {
+        console.log("[CHAT] 🎯 First message - adding portfolio context");
 
-        // Format spending data as context
+        // Format portfolio data as context
         const contextData = {
-          income: spendingData.income,
-          expenses: spendingData.expenses,
-          activities: spendingData.activities,
-          insights: spendingData.insights,
+          debts: portfolioData.debts,
+          investments: portfolioData.investments,
+          networth: portfolioData.networth,
+          cashflow: portfolioData.cashflow,
+          average_cashflow: portfolioData.average_cashflow,
+          insights: portfolioData.insights,
         };
 
         messageToSend = `${message.trim()}
 
-<SPENDING_CONTEXT>
+<PORTFOLIO_CONTEXT>
 ${JSON.stringify(contextData, null, 2)}
-</SPENDING_CONTEXT>`;
+</PORTFOLIO_CONTEXT>`;
 
-        console.log("[CHAT] 📊 Added spending context:", contextData);
+        console.log("[CHAT] 📊 Added portfolio context:", contextData);
       }
 
       // Add user message to chat (display original message without context)
@@ -91,6 +93,7 @@ ${JSON.stringify(contextData, null, 2)}
         const requestBody = {
           userId,
           message: messageToSend, // Send contextual message to API
+          topic: "portfolio", // Set topic to portfolio
           ...(chatState.sessionId && { sessionId: chatState.sessionId }),
         };
 
@@ -153,7 +156,7 @@ ${JSON.stringify(contextData, null, 2)}
         }));
       }
     },
-    [userId, chatState.sessionId, chatState.isLoading, spendingData]
+    [userId, chatState.sessionId, chatState.isLoading, portfolioData]
   );
 
   // Don't render chat until snapshot is loaded
@@ -180,7 +183,7 @@ ${JSON.stringify(contextData, null, 2)}
 
             <div className="text-center space-y-2">
               <p className="text-foreground font-semibold">
-                Waiting for Snapshot
+                Waiting for Portfolio Analysis
               </p>
               <p className="text-muted-foreground text-sm">
                 Chat will be available after data analysis...
@@ -247,12 +250,11 @@ ${JSON.stringify(contextData, null, 2)}
                 </div>
 
                 <h3 className="text-2xl font-bold bg-gradient-to-r from-foreground via-foreground/90 to-foreground/70 bg-clip-text text-transparent mb-3">
-                  Let&rsquo;s talk about your money
+                  Let&rsquo;s talk about your portfolio
                 </h3>
                 <p className="text-muted-foreground mb-8 leading-relaxed">
-                  I&rsquo;m here to help you understand your spending patterns,
-                  find savings opportunities, and make smarter financial
-                  decisions.
+                  I&rsquo;m here to help you understand your investments, track
+                  your debts, and optimize your financial portfolio.
                 </p>
 
                 {/* Quick Start Suggestions */}
@@ -262,10 +264,10 @@ ${JSON.stringify(contextData, null, 2)}
                   </p>
                   <div className="grid gap-2">
                     {[
-                      "💳 What did I spend the most on this month?",
-                      "📊 Show me my spending trends",
-                      "💡 Where can I save money?",
-                      "🎯 Help me set a budget goal",
+                      "💰 What&rsquo;s my current net worth?",
+                      "📈 How are my investments performing?",
+                      "💳 What debts should I prioritize?",
+                      "💡 How can I improve my cashflow?",
                     ].map((suggestion, index) => (
                       <button
                         key={index}

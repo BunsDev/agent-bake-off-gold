@@ -4,24 +4,24 @@ import { useState, useCallback, useEffect } from "react";
 import { SplitView } from "../../../components/layout/SplitView";
 import { useAuth } from "@/components/auth/AuthContext";
 import { useRouter } from "next/navigation";
-import { SpendingSnapshot } from "@/components/spending/SpendingSnapshot";
-import { SpendingChat } from "@/components/spending/SpendingChat";
-import { SpendingSnapshotData } from "@/lib/types/spending";
+import { PortfolioSnapshot } from "@/components/portfolio/PortfolioSnapshot";
+import { PortfolioChat } from "@/components/portfolio/PortfolioChat";
+import { PortfolioSnapshotData } from "@/lib/types/portfolio";
 import { Brain, MessageSquare } from "lucide-react";
 
-export default function SpendingPage() {
+export default function PortfolioPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   // Shared state for snapshot and chat coordination
   const [snapshotLoaded, setSnapshotLoaded] = useState(false);
-  const [snapshotData, setSnapshotData] = useState<SpendingSnapshotData | null>(
-    null
-  );
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_portfolioData, setPortfolioData] =
+    useState<PortfolioSnapshotData | null>(null);
 
   // Memoize callback functions to prevent infinite re-renders
-  const handleDataLoaded = useCallback((data: SpendingSnapshotData) => {
-    setSnapshotData(data);
+  const handleDataLoaded = useCallback((data: PortfolioSnapshotData) => {
+    setPortfolioData(data);
     setSnapshotLoaded(true);
   }, []);
 
@@ -84,7 +84,7 @@ export default function SpendingPage() {
               {/* Header Text */}
               <div>
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
-                  Financial Intelligence Dashboard
+                  Portfolio Intelligence Dashboard
                 </h2>
                 <p className="text-muted-foreground text-sm">
                   Welcome back, {user?.username}!
@@ -95,7 +95,7 @@ export default function SpendingPage() {
 
           {/* Scrollable Content */}
           <div className="flex-1 overflow-hidden">
-            <SpendingSnapshot
+            <PortfolioSnapshot
               userId={user?.username || ""}
               onDataLoaded={handleDataLoaded}
               onLoadingStateChange={handleLoadingStateChange}
@@ -124,10 +124,10 @@ export default function SpendingPage() {
               {/* Header Text */}
               <div>
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
-                  AI Financial Assistant
+                  AI Portfolio Assistant
                 </h2>
                 <p className="text-muted-foreground text-sm">
-                  Ask questions about your spending patterns
+                  Ask questions about your investments and financial health
                 </p>
               </div>
             </div>
@@ -135,10 +135,10 @@ export default function SpendingPage() {
 
           {/* Scrollable Chat Container */}
           <div className="flex-1 overflow-hidden">
-            <SpendingChat
+            <PortfolioChat
               userId={user?.username || ""}
               isEnabled={snapshotLoaded}
-              spendingData={snapshotData}
+              portfolioData={_portfolioData}
             />
           </div>
         </div>

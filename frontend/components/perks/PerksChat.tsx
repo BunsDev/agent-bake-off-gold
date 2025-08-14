@@ -2,25 +2,21 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { ChatMessage, ChatState } from "@/lib/types/chat";
-import { SpendingSnapshotData } from "@/lib/types/spending";
+import { PerksSnapshotData } from "@/lib/types/perks";
 
-import { Loader2, MessageSquare, AlertCircle, Brain } from "lucide-react";
+import { Loader2, AlertCircle, Brain, Gift } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { UserMessage } from "./UserMessage";
-import { AgentMessage } from "./AgentMessage";
-import { ChatInput } from "./ChatInput";
+import { UserMessage } from "../spending/UserMessage";
+import { AgentMessage } from "../spending/AgentMessage";
+import { ChatInput } from "../spending/ChatInput";
 
-interface SpendingChatProps {
+interface PerksChatProps {
   userId: string;
   isEnabled: boolean; // Chat appears after snapshot loads
-  spendingData: SpendingSnapshotData | null;
+  perksData: PerksSnapshotData | null;
 }
 
-export function SpendingChat({
-  userId,
-  isEnabled,
-  spendingData,
-}: SpendingChatProps) {
+export function PerksChat({ userId, isEnabled, perksData }: PerksChatProps) {
   const [chatState, setChatState] = useState<ChatState>({
     messages: [],
     isLoading: false,
@@ -28,54 +24,33 @@ export function SpendingChat({
     sessionId: null,
   });
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const [hasAutoScrolled, setHasAutoScrolled] = useState(false);
 
-  // Auto-scroll to bottom when new messages arrive
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const scrollToBottom = useCallback(() => {
+    if (chatContainerRef.current && !hasAutoScrolled) {
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
+      setHasAutoScrolled(true);
+    }
+  }, [hasAutoScrolled]);
 
   useEffect(() => {
     scrollToBottom();
-  }, [chatState.messages]);
+  }, [chatState.messages, scrollToBottom]);
 
   const sendMessage = useCallback(
-    async (message: string) => {
-      if (!message.trim() || chatState.isLoading) {
-        return;
-      }
+    async (message: string): Promise<void> => {
+      if (!message.trim()) return;
 
-      console.log("[CHAT] 🚀 Sending message:", message);
+      console.log("[PERKS CHAT] 🚀 Sending message:", message);
+      console.log("[PERKS CHAT] 📋 Current session ID:", chatState.sessionId);
 
-      // Prepare message with context for first message only
-      let messageToSend = message.trim();
-
-      // If this is the first message (no sessionId), include spending context
-      if (!chatState.sessionId && spendingData) {
-        console.log("[CHAT] 🎯 First message - adding spending context");
-
-        // Format spending data as context
-        const contextData = {
-          income: spendingData.income,
-          expenses: spendingData.expenses,
-          activities: spendingData.activities,
-          insights: spendingData.insights,
-        };
-
-        messageToSend = `${message.trim()}
-
-<SPENDING_CONTEXT>
-${JSON.stringify(contextData, null, 2)}
-</SPENDING_CONTEXT>`;
-
-        console.log("[CHAT] 📊 Added spending context:", contextData);
-      }
-
-      // Add user message to chat (display original message without context)
+      // Add user message immediately
       const userMessage: ChatMessage = {
-        id: `user-${Date.now()}`,
+        id: Date.now().toString(),
+        content: message,
         type: "user",
-        content: message.trim(), // Display original message
         timestamp: new Date(),
       };
 
@@ -87,76 +62,84 @@ ${JSON.stringify(contextData, null, 2)}
       }));
 
       try {
-        // Create request body for the API proxy
-        const requestBody = {
-          userId,
-          message: messageToSend, // Send contextual message to API
-          ...(chatState.sessionId && { sessionId: chatState.sessionId }),
-        };
+        // For the first message, append perks context
+        let messageWithContext = message;
+        const isFirstMessage = !chatState.sessionId;
 
-        console.log("[CHAT] 📤 Request body:", requestBody);
+        if (isFirstMessage && perksData) {
+          const perksContext = JSON.stringify({
+            activities: perksData.activities,
+            partners: perksData.partners,
+            insights: perksData.insights,
+          });
 
-        // Use our API proxy (not direct agent call)
+          messageWithContext = `${message}
+
+<PERKS_CONTEXT>
+${perksContext}
+</PERKS_CONTEXT>
+
+Please use this perks data to provide contextual responses about the user's benefits, bank partners, and financial perks insights.`;
+
+          console.log(
+            "[PERKS CHAT] 📦 First message - adding perks context:",
+            messageWithContext
+          );
+        }
+
         const response = await fetch("/api/cymbal/chat", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json", // Request JSON response instead of SSE
-          },
-          body: JSON.stringify(requestBody),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId,
+            message: messageWithContext,
+            sessionId: chatState.sessionId,
+            topic: "perks", // Set topic to perks
+          }),
         });
 
+        console.log("[PERKS CHAT] 📡 API response status:", response.status);
+
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          throw new Error(`Request failed: ${response.status}`);
         }
 
         const data = await response.json();
-        console.log("[CHAT] 📥 Received response:", data);
+        console.log("[PERKS CHAT] ✅ API response data:", data);
 
-        // Create agent message from response
-        const agentMessage: ChatMessage = {
-          id: `agent-${Date.now()}`,
+        // Add assistant message
+        const assistantMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          content:
+            data.message || "I apologize, but I couldn't process your request.",
           type: "agent",
-          content: data.response || "No response received",
           timestamp: new Date(),
         };
 
-        console.log(
-          "[CHAT] ✅ Agent message created:",
-          agentMessage.content.substring(0, 100)
-        );
-
-        // Always update sessionId to ensure persistence across messages
-        if (data.session_id) {
-          if (data.session_id !== chatState.sessionId) {
-            console.log("[CHAT] 📋 Session ID updated:", data.session_id);
-          } else {
-            console.log("[CHAT] 🔄 Session ID maintained:", data.session_id);
-          }
-        }
-
-        // Update state with both message and session ID
         setChatState((prev) => ({
           ...prev,
-          messages: [...prev.messages, agentMessage],
+          messages: [...prev.messages, assistantMessage],
           isLoading: false,
-          sessionId: data.session_id || prev.sessionId, // Always use session_id from response
+          sessionId: data.sessionId || prev.sessionId,
         }));
-      } catch (error) {
-        console.error("[CHAT] ❌ Chat error:", error);
 
+        console.log("[PERKS CHAT] ✅ Message exchange completed successfully");
+      } catch (error) {
+        console.error("[PERKS CHAT] ❌ Error sending message:", error);
         setChatState((prev) => ({
           ...prev,
           isLoading: false,
           error:
-            error instanceof Error ? error.message : "Failed to send message",
+            error instanceof Error
+              ? error.message
+              : "An unknown error occurred",
         }));
       }
     },
-    [userId, chatState.sessionId, chatState.isLoading, spendingData]
+    [userId, chatState.sessionId, perksData]
   );
 
-  // Don't render chat until snapshot is loaded
+  // If chat is not enabled yet, show waiting state
   if (!isEnabled) {
     return (
       <div className="h-full flex items-center justify-center bg-gradient-to-b from-transparent via-primary/[0.02] to-transparent relative">
@@ -165,13 +148,15 @@ ${JSON.stringify(contextData, null, 2)}
           <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-white/5 pointer-events-none" />
 
           <div className="relative flex flex-col items-center space-y-6">
-            {/* Animated AI Brain logo */}
+            {/* Animated AI Brain logo with Perks context */}
             <div className="relative">
               <div className="w-16 h-16 bg-gradient-to-br from-primary to-cyan-500 rounded-2xl flex items-center justify-center shadow-lg animate-pulse">
                 <Brain className="h-8 w-8 text-white" />
               </div>
               <div className="absolute -bottom-1 -right-1">
-                <MessageSquare className="h-5 w-5 text-cyan-400 animate-pulse" />
+                <div className="w-6 h-6 bg-gradient-to-br from-primary to-cyan-500 rounded-lg flex items-center justify-center">
+                  <Gift className="h-3 w-3 text-white" />
+                </div>
               </div>
             </div>
 
@@ -180,7 +165,7 @@ ${JSON.stringify(contextData, null, 2)}
 
             <div className="text-center space-y-2">
               <p className="text-foreground font-semibold">
-                Waiting for Snapshot
+                Waiting for Perks Analysis
               </p>
               <p className="text-muted-foreground text-sm">
                 Chat will be available after data analysis...
@@ -205,30 +190,6 @@ ${JSON.stringify(contextData, null, 2)}
     );
   }
 
-  // Error state
-  if (chatState.error) {
-    return (
-      <div className="h-full p-6 flex items-center justify-center">
-        <div className="w-full max-w-md">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              {chatState.error}
-              <button
-                onClick={() =>
-                  setChatState((prev) => ({ ...prev, error: null }))
-                }
-                className="ml-2 underline hover:no-underline"
-              >
-                Dismiss
-              </button>
-            </AlertDescription>
-          </Alert>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-background to-muted/20">
       {/* Scrollable Messages Area */}
@@ -239,7 +200,7 @@ ${JSON.stringify(contextData, null, 2)}
               <div className="text-center max-w-md">
                 <div className="relative mb-6">
                   <div className="w-20 h-20 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <MessageSquare className="h-8 w-8 text-primary" />
+                    <Gift className="h-8 w-8 text-primary" />
                   </div>
                   <div className="absolute top-0 right-8 w-3 h-3 bg-blue-400 rounded-full animate-bounce delay-75" />
                   <div className="absolute top-4 right-4 w-2 h-2 bg-green-400 rounded-full animate-bounce delay-150" />
@@ -247,12 +208,12 @@ ${JSON.stringify(contextData, null, 2)}
                 </div>
 
                 <h3 className="text-2xl font-bold bg-gradient-to-r from-foreground via-foreground/90 to-foreground/70 bg-clip-text text-transparent mb-3">
-                  Let&rsquo;s talk about your money
+                  Let&rsquo;s explore your perks
                 </h3>
                 <p className="text-muted-foreground mb-8 leading-relaxed">
-                  I&rsquo;m here to help you understand your spending patterns,
-                  find savings opportunities, and make smarter financial
-                  decisions.
+                  I&rsquo;m here to help you discover your benefits, understand
+                  bank partner offers, and maximize your financial perks and
+                  rewards.
                 </p>
 
                 {/* Quick Start Suggestions */}
@@ -262,10 +223,10 @@ ${JSON.stringify(contextData, null, 2)}
                   </p>
                   <div className="grid gap-2">
                     {[
-                      "💳 What did I spend the most on this month?",
-                      "📊 Show me my spending trends",
-                      "💡 Where can I save money?",
-                      "🎯 Help me set a budget goal",
+                      "🎁 What benefits do I have available?",
+                      "🏪 Which partners offer the best deals?",
+                      "💎 How can I maximize my perks?",
+                      "🔍 What special offers are available now?",
                     ].map((suggestion, index) => (
                       <button
                         key={index}
@@ -301,11 +262,21 @@ ${JSON.stringify(contextData, null, 2)}
                 </div>
               )}
 
-              <div ref={messagesEndRef} />
+              <div ref={chatContainerRef} />
             </div>
           )}
         </div>
       </div>
+
+      {/* Error Display */}
+      {chatState.error && (
+        <div className="p-4 border-t">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{chatState.error}</AlertDescription>
+          </Alert>
+        </div>
+      )}
 
       {/* Fixed Chat Input at Bottom */}
       <div className="flex-shrink-0 bg-background/90 backdrop-blur-md border-t border-border/50 shadow-lg relative z-10">

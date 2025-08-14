@@ -2,7 +2,7 @@
 # It tells uv that this project is a monorepo containing multiple packages.
 
 [project]
-name = "spending-snapshot-agent"
+name = "advisors-snapshot-agent"
 version = "0.1.0"
 description = "A multi-agent system for scheduling pickleball games."
 readme = "README.md"

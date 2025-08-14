@@ -1,40 +1,40 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { SpendingSnapshotData } from "@/lib/types/spending";
+import { PortfolioSnapshotData } from "@/lib/types/portfolio";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { SpendingCard } from "./SpendingCard";
-import { ActivitiesList } from "./ActivitiesList";
-import { InsightsCard } from "./InsightsCard";
+import { PortfolioCard } from "./PortfolioCard";
+import { ActivitiesList } from "../spending/ActivitiesList";
+import { InsightsCard } from "../spending/InsightsCard";
 
-interface SpendingSnapshotProps {
+interface PortfolioSnapshotProps {
   userId: string;
-  onDataLoaded?: (data: SpendingSnapshotData) => void;
+  onDataLoaded?: (data: PortfolioSnapshotData) => void;
   onLoadingStateChange?: (isLoading: boolean) => void;
 }
 
-export function SpendingSnapshot({
+export function PortfolioSnapshot({
   userId,
   onDataLoaded,
   onLoadingStateChange,
-}: SpendingSnapshotProps) {
-  const [data, setData] = useState<SpendingSnapshotData | null>(null);
+}: PortfolioSnapshotProps) {
+  const [data, setData] = useState<PortfolioSnapshotData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSpendingData = useCallback(async () => {
-    let successfulResult: SpendingSnapshotData | null = null;
+  const fetchPortfolioData = useCallback(async () => {
+    let successfulResult: PortfolioSnapshotData | null = null;
 
     try {
       setIsLoading(true);
       onLoadingStateChange?.(true);
       setError(null);
 
-      console.log("[FRONTEND] 🚀 Fetching spending data for userId:", userId);
+      console.log("[FRONTEND] 🚀 Fetching portfolio data for userId:", userId);
 
-      const response = await fetch("/api/cymbal/spending-snapshot", {
+      const response = await fetch("/api/cymbal/portfolio-snapshot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId }),
@@ -77,8 +77,8 @@ export function SpendingSnapshot({
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Unknown error occurred";
-      setError(`Failed to load spending data: ${errorMessage}`);
-      console.error("[FRONTEND] ❌ Spending data fetch error:", err);
+      setError(`Failed to load portfolio data: ${errorMessage}`);
+      console.error("[FRONTEND] ❌ Portfolio data fetch error:", err);
     } finally {
       setIsLoading(false);
       onLoadingStateChange?.(false);
@@ -92,9 +92,9 @@ export function SpendingSnapshot({
 
   useEffect(() => {
     if (userId) {
-      fetchSpendingData();
+      fetchPortfolioData();
     }
-  }, [userId, fetchSpendingData]);
+  }, [userId, fetchPortfolioData]);
 
   // Loading state
   if (isLoading) {
@@ -118,10 +118,10 @@ export function SpendingSnapshot({
 
             <div className="text-center space-y-2">
               <p className="text-foreground font-semibold">
-                Analyzing Financial Data
+                Analyzing Portfolio Data
               </p>
               <p className="text-muted-foreground text-sm">
-                AI is processing your spending patterns...
+                AI is processing your investments and financial health...
               </p>
             </div>
 
@@ -158,14 +158,14 @@ export function SpendingSnapshot({
               <AlertDescription className="flex flex-col space-y-4 pt-2">
                 <div className="space-y-2">
                   <p className="font-semibold text-destructive">
-                    Unable to load financial data
+                    Unable to load portfolio data
                   </p>
                   <p className="text-sm text-muted-foreground">{error}</p>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={fetchSpendingData}
+                  onClick={fetchPortfolioData}
                   className="self-start bg-background/50 hover:bg-background border-destructive/30 hover:border-destructive/50 text-destructive hover:text-destructive"
                 >
                   <div className="flex items-center gap-2">
@@ -182,11 +182,12 @@ export function SpendingSnapshot({
   }
 
   // Success state - render the dashboard
-  console.log("[FRONTEND] 🎨 Rendering dashboard with data:");
-  console.log("[FRONTEND] 🎨 Income:", data?.income);
-  console.log("[FRONTEND] 🎨 Expenses:", data?.expenses);
-  console.log("[FRONTEND] 🎨 Activities count:", data?.activities?.length);
-  console.log("[FRONTEND] 🎨 Activities:", data?.activities);
+  console.log("[FRONTEND] 🎨 Rendering portfolio dashboard with data:");
+  console.log("[FRONTEND] 🎨 Debts:", data?.debts);
+  console.log("[FRONTEND] 🎨 Investments:", data?.investments);
+  console.log("[FRONTEND] 🎨 Networth:", data?.networth);
+  console.log("[FRONTEND] 🎨 Cashflow:", data?.cashflow);
+  console.log("[FRONTEND] 🎨 Average Cashflow:", data?.average_cashflow);
   console.log("[FRONTEND] 🎨 Insights length:", data?.insights?.length);
   console.log(
     "[FRONTEND] 🎨 Insights preview:",
@@ -202,23 +203,37 @@ export function SpendingSnapshot({
       <div className="flex-1 overflow-y-auto">
         <div className="p-6 space-y-8">
           <div className="relative space-y-8">
-            {/* Income and Expenses Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <SpendingCard
-                title="Income"
-                amount={data?.income || 0}
+            {/* Portfolio Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 transform hover:scale-[1.01] transition-transform duration-300">
+              <PortfolioCard
+                title="Debts"
+                items={data?.debts || []}
+                variant="destructive"
+              />
+              <PortfolioCard
+                title="Investments"
+                items={data?.investments || []}
                 variant="success"
               />
-              <SpendingCard
-                title="Expenses"
-                amount={data?.expenses || 0}
-                variant="destructive"
+              <PortfolioCard
+                title="Net Worth"
+                items={data?.networth || []}
+                variant="default"
               />
             </div>
 
-            {/* Activities List */}
-            <div className="transform hover:scale-[1.01] transition-transform duration-300">
-              <ActivitiesList activities={data?.activities || []} />
+            {/* Cashflow Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 transform hover:scale-[1.01] transition-transform duration-300">
+              <PortfolioCard
+                title="Cashflow"
+                items={data?.cashflow || []}
+                variant="default"
+              />
+              <PortfolioCard
+                title="Average Cashflow"
+                items={data?.average_cashflow || []}
+                variant="default"
+              />
             </div>
 
             {/* Financial Insights */}

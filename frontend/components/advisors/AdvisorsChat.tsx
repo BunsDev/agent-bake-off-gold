@@ -2,25 +2,25 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { ChatMessage, ChatState } from "@/lib/types/chat";
-import { SpendingSnapshotData } from "@/lib/types/spending";
+import { AdvisorsSnapshotData } from "@/lib/types/advisors";
 
-import { Loader2, MessageSquare, AlertCircle, Brain } from "lucide-react";
+import { Loader2, MessageSquare, AlertCircle, UserCheck } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { UserMessage } from "./UserMessage";
-import { AgentMessage } from "./AgentMessage";
-import { ChatInput } from "./ChatInput";
+import { UserMessage } from "../spending/UserMessage";
+import { AgentMessage } from "../spending/AgentMessage";
+import { ChatInput } from "../spending/ChatInput";
 
-interface SpendingChatProps {
+interface AdvisorsChatProps {
   userId: string;
   isEnabled: boolean; // Chat appears after snapshot loads
-  spendingData: SpendingSnapshotData | null;
+  advisorsData: AdvisorsSnapshotData | null;
 }
 
-export function SpendingChat({
+export function AdvisorsChat({
   userId,
   isEnabled,
-  spendingData,
-}: SpendingChatProps) {
+  advisorsData,
+}: AdvisorsChatProps): JSX.Element {
   const [chatState, setChatState] = useState<ChatState>({
     messages: [],
     isLoading: false,
@@ -45,31 +45,11 @@ export function SpendingChat({
         return;
       }
 
-      console.log("[CHAT] 🚀 Sending message:", message);
-
-      // Prepare message with context for first message only
-      let messageToSend = message.trim();
-
-      // If this is the first message (no sessionId), include spending context
-      if (!chatState.sessionId && spendingData) {
-        console.log("[CHAT] 🎯 First message - adding spending context");
-
-        // Format spending data as context
-        const contextData = {
-          income: spendingData.income,
-          expenses: spendingData.expenses,
-          activities: spendingData.activities,
-          insights: spendingData.insights,
-        };
-
-        messageToSend = `${message.trim()}
-
-<SPENDING_CONTEXT>
-${JSON.stringify(contextData, null, 2)}
-</SPENDING_CONTEXT>`;
-
-        console.log("[CHAT] 📊 Added spending context:", contextData);
-      }
+      console.log("[ADVISORS CHAT] 🚀 Sending message:", message);
+      console.log(
+        "[ADVISORS CHAT] 📋 Current session ID:",
+        chatState.sessionId
+      );
 
       // Add user message to chat (display original message without context)
       const userMessage: ChatMessage = {
@@ -87,6 +67,33 @@ ${JSON.stringify(contextData, null, 2)}
       }));
 
       try {
+        // Prepare message with context for first message only
+        let messageToSend = message.trim();
+
+        // If this is the first message (no sessionId), include advisors context
+        if (!chatState.sessionId && advisorsData) {
+          console.log(
+            "[ADVISORS CHAT] 🎯 First message - adding advisors context"
+          );
+
+          // Format advisors data as context
+          const contextData = {
+            advisors: advisorsData.advisors,
+            meetings: advisorsData.meetings,
+          };
+
+          messageToSend = `${message.trim()}
+
+<ADVISORS_CONTEXT>
+${JSON.stringify(contextData, null, 2)}
+</ADVISORS_CONTEXT>`;
+
+          console.log(
+            "[ADVISORS CHAT] 👥 Added advisors context:",
+            contextData
+          );
+        }
+
         // Create request body for the API proxy
         const requestBody = {
           userId,
@@ -94,7 +101,7 @@ ${JSON.stringify(contextData, null, 2)}
           ...(chatState.sessionId && { sessionId: chatState.sessionId }),
         };
 
-        console.log("[CHAT] 📤 Request body:", requestBody);
+        console.log("[ADVISORS CHAT] 📤 Request body:", requestBody);
 
         // Use our API proxy (not direct agent call)
         const response = await fetch("/api/cymbal/chat", {
@@ -106,12 +113,14 @@ ${JSON.stringify(contextData, null, 2)}
           body: JSON.stringify(requestBody),
         });
 
+        console.log("[ADVISORS CHAT] 📡 API response status:", response.status);
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         const data = await response.json();
-        console.log("[CHAT] 📥 Received response:", data);
+        console.log("[ADVISORS CHAT] 📥 Received response:", data);
 
         // Create agent message from response
         const agentMessage: ChatMessage = {
@@ -122,16 +131,22 @@ ${JSON.stringify(contextData, null, 2)}
         };
 
         console.log(
-          "[CHAT] ✅ Agent message created:",
+          "[ADVISORS CHAT] ✅ Agent message created:",
           agentMessage.content.substring(0, 100)
         );
 
         // Always update sessionId to ensure persistence across messages
         if (data.session_id) {
           if (data.session_id !== chatState.sessionId) {
-            console.log("[CHAT] 📋 Session ID updated:", data.session_id);
+            console.log(
+              "[ADVISORS CHAT] 📋 Session ID updated:",
+              data.session_id
+            );
           } else {
-            console.log("[CHAT] 🔄 Session ID maintained:", data.session_id);
+            console.log(
+              "[ADVISORS CHAT] 🔄 Session ID maintained:",
+              data.session_id
+            );
           }
         }
 
@@ -143,7 +158,7 @@ ${JSON.stringify(contextData, null, 2)}
           sessionId: data.session_id || prev.sessionId, // Always use session_id from response
         }));
       } catch (error) {
-        console.error("[CHAT] ❌ Chat error:", error);
+        console.error("[ADVISORS CHAT] ❌ Chat error:", error);
 
         setChatState((prev) => ({
           ...prev,
@@ -153,10 +168,10 @@ ${JSON.stringify(contextData, null, 2)}
         }));
       }
     },
-    [userId, chatState.sessionId, chatState.isLoading, spendingData]
+    [userId, chatState.sessionId, chatState.isLoading, advisorsData]
   );
 
-  // Don't render chat until snapshot is loaded
+  // If chat is not enabled yet, show waiting state
   if (!isEnabled) {
     return (
       <div className="h-full flex items-center justify-center bg-gradient-to-b from-transparent via-primary/[0.02] to-transparent relative">
@@ -165,13 +180,13 @@ ${JSON.stringify(contextData, null, 2)}
           <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-white/5 pointer-events-none" />
 
           <div className="relative flex flex-col items-center space-y-6">
-            {/* Animated AI Brain logo */}
+            {/* Animated AI Chat logo */}
             <div className="relative">
               <div className="w-16 h-16 bg-gradient-to-br from-primary to-cyan-500 rounded-2xl flex items-center justify-center shadow-lg animate-pulse">
-                <Brain className="h-8 w-8 text-white" />
+                <MessageSquare className="h-8 w-8 text-white" />
               </div>
               <div className="absolute -bottom-1 -right-1">
-                <MessageSquare className="h-5 w-5 text-cyan-400 animate-pulse" />
+                <UserCheck className="h-5 w-5 text-cyan-400 animate-pulse" />
               </div>
             </div>
 
@@ -180,7 +195,7 @@ ${JSON.stringify(contextData, null, 2)}
 
             <div className="text-center space-y-2">
               <p className="text-foreground font-semibold">
-                Waiting for Snapshot
+                Waiting for Advisors Analysis
               </p>
               <p className="text-muted-foreground text-sm">
                 Chat will be available after data analysis...
@@ -239,7 +254,7 @@ ${JSON.stringify(contextData, null, 2)}
               <div className="text-center max-w-md">
                 <div className="relative mb-6">
                   <div className="w-20 h-20 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <MessageSquare className="h-8 w-8 text-primary" />
+                    <UserCheck className="h-8 w-8 text-primary" />
                   </div>
                   <div className="absolute top-0 right-8 w-3 h-3 bg-blue-400 rounded-full animate-bounce delay-75" />
                   <div className="absolute top-4 right-4 w-2 h-2 bg-green-400 rounded-full animate-bounce delay-150" />
@@ -247,12 +262,12 @@ ${JSON.stringify(contextData, null, 2)}
                 </div>
 
                 <h3 className="text-2xl font-bold bg-gradient-to-r from-foreground via-foreground/90 to-foreground/70 bg-clip-text text-transparent mb-3">
-                  Let&rsquo;s talk about your money
+                  Let&rsquo;s talk about your advisors
                 </h3>
                 <p className="text-muted-foreground mb-8 leading-relaxed">
-                  I&rsquo;m here to help you understand your spending patterns,
-                  find savings opportunities, and make smarter financial
-                  decisions.
+                  I&rsquo;m here to help you understand your financial advisors,
+                  manage your meetings, and get the most out of your advisory
+                  services.
                 </p>
 
                 {/* Quick Start Suggestions */}
@@ -262,10 +277,10 @@ ${JSON.stringify(contextData, null, 2)}
                   </p>
                   <div className="grid gap-2">
                     {[
-                      "💳 What did I spend the most on this month?",
-                      "📊 Show me my spending trends",
-                      "💡 Where can I save money?",
-                      "🎯 Help me set a budget goal",
+                      "👥 Who are my available advisors?",
+                      "📅 When is my next meeting?",
+                      "💼 What services do my advisors offer?",
+                      "🎯 Help me prepare for my meeting",
                     ].map((suggestion, index) => (
                       <button
                         key={index}

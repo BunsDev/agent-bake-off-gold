@@ -3,7 +3,6 @@ export interface ChatMessage {
   type: "user" | "agent";
   content: string;
   timestamp: Date;
-  streaming?: boolean;
 }
 
 export interface ChatState {
@@ -11,11 +10,10 @@ export interface ChatState {
   isLoading: boolean;
   error: string | null;
   sessionId: string | null;
-  currentStreamingMessage: string;
 }
 
 export interface SSEEvent {
-  type: "session" | "content" | "error";
+  type: "session" | "content" | "complete" | "error";
   sessionId?: string;
   text?: string;
   timestamp?: number;

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "./AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +11,6 @@ export function LoginForm() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,8 +28,9 @@ export function LoginForm() {
     const success = login(username.trim());
 
     if (success) {
-      // Redirect to spending page
-      router.push("/spending");
+      // Login successful - page.tsx will handle navigation based on agent permissions
+      // Reset form state
+      setUsername("");
     } else {
       setError("Invalid username. Please use: user-001, user-002, or user-003");
     }

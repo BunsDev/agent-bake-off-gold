@@ -1,9 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthContext";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Brain,
   DollarSign,
@@ -11,18 +19,42 @@ import {
   BarChart3,
   PieChart,
   LineChart,
+  Shield,
+  CheckCircle,
+  AlertTriangle,
 } from "lucide-react";
 
 export default function Home() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, logout } = useAuth();
   const router = useRouter();
+  const [showAgentPermissions, setShowAgentPermissions] = useState(false);
 
   useEffect(() => {
-    // Redirect to dashboard if already authenticated
-    if (!isLoading && isAuthenticated) {
-      router.push("/spending");
+    // Simple effect: authenticated users always see agent permissions
+    if (!isLoading) {
+      if (isAuthenticated) {
+        // Always show agent permission request after login
+        setShowAgentPermissions(true);
+      } else {
+        // Not authenticated - hide permission screen
+        setShowAgentPermissions(false);
+      }
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isLoading, isAuthenticated]);
+
+  // Handle agent permission granting
+  const handleGrantPermissions = () => {
+    setShowAgentPermissions(false);
+    // Navigate directly to dashboard - no storage needed
+    router.push("/spending");
+  };
+
+  // Handle agent permission denial
+  const handleDenyPermissions = () => {
+    setShowAgentPermissions(false);
+    // Since the app requires agent permissions to function, sign user out
+    logout();
+  };
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -31,6 +63,116 @@ export default function Home() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show agent permissions request if authenticated but permissions not granted
+  if (showAgentPermissions) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 relative overflow-hidden flex items-center justify-center p-4">
+        {/* Background Elements */}
+        <div className="absolute inset-0 opacity-5 dark:opacity-10">
+          <div className="absolute top-20 left-10 sm:left-20">
+            <Shield className="h-16 w-16 sm:h-24 sm:w-24 text-primary animate-pulse" />
+          </div>
+          <div className="absolute bottom-20 right-10 sm:right-32">
+            <Brain className="h-18 w-18 sm:h-22 sm:w-22 text-primary animate-pulse" />
+          </div>
+        </div>
+
+        {/* Agent Permission Request */}
+        <div className="relative z-10 w-full max-w-2xl mx-auto">
+          <Card className="shadow-2xl border-primary/20">
+            <CardHeader className="text-center pb-6">
+              <div className="w-16 h-16 bg-gradient-to-br from-primary to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Shield className="h-8 w-8 text-white" />
+              </div>
+              <CardTitle className="text-2xl font-bold">
+                Enable AI Agents
+              </CardTitle>
+              <CardDescription className="text-base">
+                To use FI, you must allow our AI agents to help manage your
+                finances
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Benefits */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  What our AI agents will do for you:
+                </h3>
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
+                    <span>
+                      <strong>Daily Spending Agent:</strong> Analyze your
+                      spending patterns, find savings opportunities, and manage
+                      subscriptions
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
+                    <span>
+                      <strong>Big Purchases Agent:</strong> Help plan major
+                      purchases like homes and cars with personalized advice
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
+                    <span>
+                      <strong>Trip Planning Agent:</strong> Budget and save for
+                      vacations, find deals, and track travel expenses
+                    </span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Security Notice */}
+              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-amber-800 dark:text-amber-200 mb-1">
+                      Important:
+                    </p>
+                    <p className="text-amber-700 dark:text-amber-300">
+                      Our AI agents will access your transaction history,
+                      account balances, and spending patterns to provide
+                      personalized financial guidance. Your data is encrypted
+                      and never shared with third parties.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <Button
+                  onClick={handleGrantPermissions}
+                  className="flex-1 bg-gradient-to-r from-primary to-cyan-500 hover:from-primary/90 hover:to-cyan-500/90"
+                  size="lg"
+                >
+                  <CheckCircle className="mr-2 h-4 w-4" />I Allow Agent Access
+                </Button>
+                <Button
+                  onClick={handleDenyPermissions}
+                  variant="outline"
+                  size="lg"
+                  className="flex-1 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/20"
+                >
+                  Cancel
+                </Button>
+              </div>
+
+              <p className="text-xs text-center text-muted-foreground mt-4">
+                You must enable agent access to use FI. You can manage these
+                permissions in your account settings later.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
