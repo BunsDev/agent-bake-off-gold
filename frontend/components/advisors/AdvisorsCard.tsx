@@ -1,5 +1,6 @@
 "use client";
 
+import { JSX } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, Calendar, UserCheck } from "lucide-react";
